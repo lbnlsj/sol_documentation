@@ -1,587 +1,208 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Solana Copy Trading</title>
+    <title>Solana交易系统</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/@sweetalert2/theme-minimal@4/minimal.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.js"></script>
 </head>
 <body class="bg-gray-100">
-<div class="min-h-screen">
-    <!-- Navigation -->
     <nav class="bg-white shadow-lg">
         <div class="max-w-7xl mx-auto px-4">
             <div class="flex justify-between h-16">
-                <div class="flex">
-                    <div class="flex-shrink-0 flex items-center">
-                        <h1 class="text-xl font-bold">Solana Copy Trading</h1>
-                    </div>
+                <div class="flex-shrink-0 flex items-center">
+                    <h1 class="text-xl font-bold">Solana交易系统</h1>
                 </div>
-                <div class="flex items-center">
-                    <button onclick="showSettingsModal()"
-                            class="bg-gray-800 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-700">
-                        Settings
+                <div class="flex items-center space-x-4">
+                    <button onclick="showTaskModal()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                        新建任务
+                    </button>
+                    <button onclick="showSettingsModal()" class="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-700">
+                        系统设置
                     </button>
                 </div>
             </div>
         </div>
     </nav>
 
-    <!-- Main Content -->
-    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <!-- Trading Wallets Section -->
+    <main class="max-w-7xl mx-auto py-6 px-4">
+        <!-- 交易任务列表 -->
         <div class="bg-white shadow rounded-lg mb-6 p-4">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-lg font-semibold">Trading Wallets</h2>
-                <button onclick="showAddWalletModal()"
-                        class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
-                    Add Wallet
-                </button>
-            </div>
+            <h2 class="text-lg font-semibold mb-4">交易任务</h2>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead>
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Name
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Public Key
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Balance
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Actions
-                        </th>
-                    </tr>
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">任务名称</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">地址组</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">状态</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">操作</th>
+                        </tr>
                     </thead>
-                    <tbody id="walletTableBody" class="bg-white divide-y divide-gray-200">
-                    <!-- Wallet rows will be inserted here -->
-                    </tbody>
+                    <tbody id="tasksTableBody" class="divide-y divide-gray-200"></tbody>
                 </table>
             </div>
         </div>
 
-        <!-- Monitored Addresses Section -->
+        <!-- 监控地址组 -->
         <div class="bg-white shadow rounded-lg mb-6 p-4">
             <div class="flex justify-between items-center mb-4">
-                <h2 class="text-lg font-semibold">Monitored Addresses</h2>
+                <h2 class="text-lg font-semibold">监控地址</h2>
                 <div class="flex space-x-2">
-                    <button onclick="showAddressModal()"
-                            class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
-                        Add Address
-                    </button>
-                    <button onclick="showImportModal()"
-                            class="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600">
-                        Import Addresses
+                    <select id="groupSelect" class="rounded border-gray-300" onchange="changeGroup(this.value)">
+                        <option value="A">A组</option>
+                        <option value="B">B组</option>
+                        <option value="C">C组</option>
+                    </select>
+                    <button onclick="showImportModal()" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                        导入地址
                     </button>
                 </div>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4" id="addressPreview">
-                <!-- Address preview cards will be inserted here -->
-            </div>
-            <div class="text-center">
-                <button onclick="showAllAddresses()" class="text-blue-500 hover:text-blue-700">
-                    View All Addresses (<span id="totalAddresses">0</span>)
-                </button>
-            </div>
+            <div id="addressList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
         </div>
 
-        <!-- Recent Trades Section -->
-        <div class="bg-white shadow rounded-lg p-4">
-            <h2 class="text-lg font-semibold mb-4">Recent Trades</h2>
+        <!-- 交易钱包 -->
+        <div class="bg-white shadow rounded-lg mb-6 p-4">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold">交易钱包</h2>
+                <button onclick="showAddWalletModal()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                    添加钱包
+                </button>
+            </div>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead>
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Time
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Address
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Action
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Token
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Amount
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Status
-                        </th>
-                    </tr>
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">钱包名称</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">公钥地址</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">余额</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">操作</th>
+                        </tr>
                     </thead>
-                    <tbody id="tradesTableBody" class="bg-white divide-y divide-gray-200">
-                    <!-- Trade rows will be inserted here -->
-                    </tbody>
+                    <tbody id="walletsTableBody" class="divide-y divide-gray-200"></tbody>
                 </table>
             </div>
         </div>
     </main>
-</div>
 
-<!-- Modals -->
-<!-- Settings Modal -->
-<div id="settingsModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden">
-    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-        <div class="mt-3">
-            <h3 class="text-lg font-medium mb-4">Trading Settings</h3>
+    <!-- 弹窗 -->
+    <!-- 任务创建弹窗 -->
+    <div id="taskModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <h3 class="text-lg font-medium mb-4">创建交易任务</h3>
             <div class="space-y-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Buy Amount (SOL)</label>
-                    <input type="number" id="buyAmount" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                           step="0.1">
+                    <label class="block text-sm font-medium text-gray-700">任务名称</label>
+                    <input type="text" id="taskName" class="mt-1 block w-full rounded-md border-gray-300">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Take Profit (%)</label>
-                    <input type="number" id="takeProfit" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                    <label class="block text-sm font-medium text-gray-700">监控地址组</label>
+                    <select id="addressGroup" class="mt-1 block w-full rounded-md border-gray-300">
+                        <option value="A">A组</option>
+                        <option value="B">B组</option>
+                        <option value="C">C组</option>
+                    </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Stop Loss (%)</label>
-                    <input type="number" id="stopLoss" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                </div>
-                <div class="flex justify-end space-x-3">
-                    <button onclick="closeSettingsModal()"
-                            class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">Cancel
-                    </button>
-                    <button onclick="saveSettings()" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-                        Save
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Add Wallet Modal -->
-<div id="addWalletModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden">
-    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-        <div class="mt-3">
-            <h3 class="text-lg font-medium mb-4">Add Trading Wallet</h3>
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Wallet Name</label>
-                    <input type="text" id="walletName" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                    <label class="block text-sm font-medium text-gray-700">每日跟单上限</label>
+                    <input type="number" id="maxTradesPerDay" class="mt-1 block w-full rounded-md border-gray-300" value="2">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Private Key</label>
-                    <input type="password" id="privateKey"
-                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                    <label class="block text-sm font-medium text-gray-700">买入金额 (SOL)</label>
+                    <input type="number" id="buyAmount" class="mt-1 block w-full rounded-md border-gray-300" step="0.1">
                 </div>
-                <div class="flex justify-end space-x-3">
-                    <button onclick="closeAddWalletModal()"
-                            class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">Cancel
-                    </button>
-                    <button onclick="addWallet()" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-                        Add
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Add/Import Address Modal -->
-<div id="addressModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden">
-    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-        <div class="mt-3">
-            <h3 class="text-lg font-medium mb-4">Add Address to Monitor</h3>
-            <div class="space-y-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Solana Address</label>
-                    <input type="text" id="monitoredAddress"
-                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                </div>
-                <div class="flex justify-end space-x-3">
-                    <button onclick="closeAddressModal()"
-                            class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">Cancel
-                    </button>
-                    <button onclick="addAddress()" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-                        Add
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Import Addresses Modal -->
-<div id="importModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden">
-    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-        <div class="mt-3">
-            <h3 class="text-lg font-medium mb-4">Import Addresses</h3>
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Addresses (one per line)</label>
-                    <textarea id="importAddresses" rows="10"
-                              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></textarea>
-                </div>
-                <div class="flex justify-end space-x-3">
-                    <button onclick="closeImportModal()"
-                            class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">Cancel
-                    </button>
-                    <button onclick="importAddresses()"
-                            class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Import
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- View All Addresses Modal -->
-<div id="viewAllModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden">
-    <div class="relative top-20 mx-auto p-5 border w-3/4 shadow-lg rounded-md bg-white">
-        <div class="mt-3">
-            <h3 class="text-lg font-medium mb-4">All Monitored Addresses</h3>
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead>
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Address
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Added
-                            Date
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Actions
-                        </th>
-                    </tr>
-                    </thead>
-                    <tbody id="allAddressesTableBody" class="bg-white divide-y divide-gray-200">
-                    <!-- Address rows will be inserted here -->
-                    </tbody>
-                </table>
-            </div>
-            <div class="mt-4 flex justify-end">
-                <button onclick="closeViewAllModal()"
-                        class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">Close
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-    // Utility functions for modal handling
-    function showModal(modalId) {
-        document.getElementById(modalId).classList.remove('hidden');
-    }
-
-    function hideModal(modalId) {
-        document.getElementById(modalId).classList.add('hidden');
-    }
-
-    // Modal show/hide functions
-    function showSettingsModal() {
-        showModal('settingsModal');
-    }
-
-    function closeSettingsModal() {
-        hideModal('settingsModal');
-    }
-
-    function showAddWalletModal() {
-        showModal('addWalletModal');
-    }
-
-    function closeAddWalletModal() {
-        hideModal('addWalletModal');
-    }
-
-    function showAddressModal() {
-        showModal('addressModal');
-    }
-
-    function closeAddressModal() {
-        hideModal('addressModal');
-    }
-
-    function showImportModal() {
-        showModal('importModal');
-    }
-
-    function closeImportModal() {
-        hideModal('importModal');
-    }
-
-    function showViewAllModal() {
-        showModal('viewAllModal');
-    }
-
-    function closeViewAllModal() {
-        hideModal('viewAllModal');
-    }
-
-    // Mock data handling
-    let wallets = [];
-    let addresses = [];
-    let trades = [];
-
-    // Wallet functions
-    async function addWallet() {
-        const name = document.getElementById('walletName').value;
-        const privateKey = document.getElementById('privateKey').value;
-
-        if (!name || !privateKey) {
-            Swal.fire({
-                title: 'Error',
-                text: 'Please fill in all fields',
-                icon: 'error'
-            });
-            return;
-        }
-
-        try {
-            const response = await fetch('/api/wallets', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({name, privateKey})
-            });
-
-            if (response.ok) {
-                wallets.push({name, publicKey: 'Generated from private key'});
-                updateWalletTable();
-                closeAddWalletModal();
-                document.getElementById('walletName').value = '';
-                document.getElementById('privateKey').value = '';
-
-                Swal.fire({
-                    title: 'Success',
-                    text: 'Wallet added successfully',
-                    icon: 'success'
-                });
-            }
-        } catch (error) {
-            Swal.fire({
-                title: 'Error',
-                text: 'Failed to add wallet',
-                icon: 'error'
-            });
-        }
-    }
-
-    function updateWalletTable() {
-        const tbody = document.getElementById('walletTableBody');
-        tbody.innerHTML = wallets.map(wallet => `
-                <tr>
-                    <td class="px-6 py-4 whitespace-nowrap">${wallet.name}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">${truncateAddress(wallet.publicKey)}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">0 SOL</td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <button onclick="deleteWallet('${wallet.publicKey}')" class="text-red-600 hover:text-red-900">Delete</button>
-                    </td>
-                </tr>
-            `).join('');
-    }
-
-    // Address functions
-    async function addAddress() {
-        const address = document.getElementById('monitoredAddress').value;
-
-        if (!address) {
-            Swal.fire({
-                title: 'Error',
-                text: 'Please enter an address',
-                icon: 'error'
-            });
-            return;
-        }
-
-        try {
-            const response = await fetch('/api/addresses', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({addresses: [address]})
-            });
-
-            if (response.ok) {
-                addresses.push(address);
-                updateAddressPreview();
-                closeAddressModal();
-                document.getElementById('monitoredAddress').value = '';
-
-                Swal.fire({
-                    title: 'Success',
-                    text: 'Address added successfully',
-                    icon: 'success'
-                });
-            }
-        } catch (error) {
-            Swal.fire({
-                title: 'Error',
-                text: 'Failed to add address',
-                icon: 'error'
-            });
-        }
-    }
-
-    async function importAddresses() {
-        const addressList = document.getElementById('importAddresses').value
-            .split('\n')
-            .map(addr => addr.trim())
-            .filter(addr => addr);
-
-        if (addressList.length === 0) {
-            Swal.fire({
-                title: 'Error',
-                text: 'Please enter at least one address',
-                icon: 'error'
-            });
-            return;
-        }
-
-        try {
-            const response = await fetch('/api/addresses', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({addresses: addressList})
-            });
-
-            if (response.ok) {
-                addresses = [...new Set([...addresses, ...addressList])];
-                updateAddressPreview();
-                closeImportModal();
-                document.getElementById('importAddresses').value = '';
-
-                Swal.fire({
-                    title: 'Success',
-                    text: `${addressList.length} addresses imported successfully`,
-                    icon: 'success'
-                });
-            }
-        } catch (error) {
-            Swal.fire({
-                title: 'Error',
-                text: 'Failed to import addresses',
-                icon: 'error'
-            });
-        }
-    }
-
-    function updateAddressPreview() {
-        const container = document.getElementById('addressPreview');
-        const previewAddresses = addresses.slice(0, 9);
-
-        container.innerHTML = previewAddresses.map(address => `
-                <div class="p-4 border rounded-lg">
-                    <div class="flex justify-between items-center">
-                        <span class="text-sm font-medium text-gray-900">${truncateAddress(address)}</span>
-                        <button onclick="deleteAddress('${address}')" class="text-red-600 hover:text-red-900">
-                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
+                    <label class="block text-sm font-medium text-gray-700">市值范围</label>
+                    <div class="flex space-x-2">
+                        <input type="number" id="marketCapMin" placeholder="最小值" class="mt-1 block w-1/2 rounded-md border-gray-300">
+                        <input type="number" id="marketCapMax" placeholder="最大值" class="mt-1 block w-1/2 rounded-md border-gray-300">
                     </div>
                 </div>
-            `).join('');
+                <div>
+                    <label class="flex items-center">
+                        <input type="checkbox" id="pumpOnly" class="rounded border-gray-300" checked>
+                        <span class="ml-2 text-sm text-gray-700">仅买入Pump代币</span>
+                    </label>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">分批止盈设置</label>
+                    <div id="takeProfitLevels" class="space-y-2"></div>
+                    <button onclick="addTakeProfitLevel()" class="mt-2 text-sm text-blue-600 hover:text-blue-800">
+                        + 添加止盈档位
+                    </button>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">止损比例 (%)</label>
+                    <input type="number" id="stopLoss" class="mt-1 block w-full rounded-md border-gray-300">
+                </div>
+                <div>
+                    <label class="flex items-center">
+                        <input type="checkbox" id="trailingStop" class="rounded border-gray-300">
+                        <span class="ml-2 text-sm text-gray-700">启用移动止损</span>
+                    </label>
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button onclick="closeTaskModal()" class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">
+                        取消
+                    </button>
+                    <button onclick="createTask()" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                        创建
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-        document.getElementById('totalAddresses').textContent = addresses.length;
-    }
+    <!-- 导入地址弹窗 -->
+    <div id="importModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <h3 class="text-lg font-medium mb-4">导入监控地址</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">地址列表（每行一个）</label>
+                    <textarea id="importAddresses" rows="10" class="mt-1 block w-full rounded-md border-gray-300"></textarea>
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button onclick="closeImportModal()" class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">
+                        取消
+                    </button>
+                    <button onclick="addAddresses()" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                        导入
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    function showAllAddresses() {
-        const tbody = document.getElementById('allAddressesTableBody');
-        tbody.innerHTML = addresses.map(address => `
-                <tr>
-                    <td class="px-6 py-4 whitespace-nowrap">${address}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">2024-01-22</td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <button onclick="deleteAddress('${address}')" class="text-red-600 hover:text-red-900">Delete</button>
-                    </td>
-                </tr>
-            `).join('');
-        showViewAllModal();
-    }
+    <!-- 添加钱包弹窗 -->
+    <div id="addWalletModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <h3 class="text-lg font-medium mb-4">添加交易钱包</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">钱包名称</label>
+                    <input type="text" id="walletName" class="mt-1 block w-full rounded-md border-gray-300">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">私钥</label>
+                    <input type="password" id="privateKey" class="mt-1 block w-full rounded-md border-gray-300">
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button onclick="closeAddWalletModal()" class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">
+                        取消
+                    </button>
+                    <button onclick="addWallet()" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                        添加
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    async function deleteAddress(address) {
-        try {
-            const response = await fetch(`/api/addresses/${address}`, {
-                method: 'DELETE'
-            });
-
-            if (response.ok) {
-                addresses = addresses.filter(addr => addr !== address);
-                updateAddressPreview();
-                showAllAddresses();
-
-                Swal.fire({
-                    title: 'Success',
-                    text: 'Address deleted successfully',
-                    icon: 'success'
-                });
-            }
-        } catch (error) {
-            Swal.fire({
-                title: 'Error',
-                text: 'Failed to delete address',
-                icon: 'error'
-            });
-        }
-    }
-
-    // Utility functions
-    function truncateAddress(address) {
-        if (!address) return '';
-        return address.slice(0, 6) + '...' + address.slice(-4);
-    }
-
-    // Initial load
-    updateWalletTable();
-    updateAddressPreview();
-
-    // Mock live data updates
-    setInterval(() => {
-        // Simulate new trades
-        if (Math.random() > 0.7) {
-            const trade = {
-                time: new Date().toISOString(),
-                address: '0x' + Math.random().toString(16).slice(2, 14),
-                action: Math.random() > 0.5 ? 'BUY' : 'SELL',
-                token: 'SOL',
-                amount: (Math.random() * 10).toFixed(2),
-                status: 'Completed'
-            };
-
-            const tbody = document.getElementById('tradesTableBody');
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                    <td class="px-6 py-4 whitespace-nowrap">${new Date(trade.time).toLocaleTimeString()}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">${truncateAddress(trade.address)}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">${trade.action}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">${trade.token}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">${trade.amount}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                            ${trade.status}
-                        </span>
-                    </td>
-                `;
-
-            if (tbody.firstChild) {
-                tbody.insertBefore(row, tbody.firstChild);
-            } else {
-                tbody.appendChild(row);
-            }
-
-            // Keep only last 20 trades
-            while (tbody.children.length > 20) {
-                tbody.removeChild(tbody.lastChild);
-            }
-        }
-    }, 3000);
-</script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
 </body>
 </html>

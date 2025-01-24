@@ -4,101 +4,95 @@ import json
 
 app = Flask(__name__)
 
-# Mock data storage
-addresses = []
+# Data storage
+addresses = {}  # Group -> addresses mapping
 wallets = []
-settings = {
-    "buyAmount": 0.1,
-    "takeProfit": 20,
-    "stopLoss": 10
-}
+trading_tasks = []
 
+default_settings = {
+    "buyAmount": 0.1,
+    "takeProfit": [
+        {"percentage": 100, "sellAmount": 5},
+        {"percentage": 200, "sellAmount": 5},
+        {"percentage": 300, "sellAmount": 10},
+        {"percentage": 400, "sellAmount": 10},
+        {"percentage": 500, "sellAmount": 10},
+    ],
+    "stopLoss": 10,
+    "trailingStop": True,
+    "maxTradesPerDay": 2,
+    "marketCapRange": {"min": 0, "max": 1000000000},
+    "followRange": {"min": 0, "max": 100},
+    "top10HoldingPercentage": 0,
+    "pumpOnly": True
+}
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
-
-@app.route('/api/addresses', methods=['GET'])
-def get_addresses():
-    page = int(request.args.get('page', 1))
-    per_page = int(request.args.get('per_page', 50))
-    start = (page - 1) * per_page
-    end = start + per_page
+@app.route('/api/addresses/<group>', methods=['GET'])
+def get_addresses(group):
     return jsonify({
-        'addresses': addresses[start:end],
-        'total': len(addresses),
-        'page': page,
-        'per_page': per_page
+        'addresses': addresses.get(group, []),
+        'total': len(addresses.get(group, []))
     })
 
-
-@app.route('/api/addresses', methods=['POST'])
-def add_addresses():
+@app.route('/api/addresses/<group>', methods=['POST'])
+def add_addresses(group):
+    if group not in addresses:
+        addresses[group] = []
     new_addresses = request.json.get('addresses', [])
-    for addr in new_addresses:
-        if addr not in addresses:
-            addresses.append(addr)
+    addresses[group].extend([addr for addr in new_addresses if addr not in addresses[group]])
     return jsonify({'success': True})
 
-
-@app.route('/api/addresses/<address>', methods=['DELETE'])
-def delete_address(address):
-    if address in addresses:
-        addresses.remove(address)
+@app.route('/api/addresses/<group>/<address>', methods=['DELETE'])
+def delete_address(group, address):
+    if group in addresses and address in addresses[group]:
+        addresses[group].remove(address)
         return jsonify({'success': True})
     return jsonify({'success': False, 'error': 'Address not found'}), 404
 
+@app.route('/api/tasks', methods=['GET'])
+def get_tasks():
+    return jsonify({'tasks': trading_tasks})
 
-@app.route('/api/wallets', methods=['GET'])
-def get_wallets():
+@app.route('/api/tasks', methods=['POST'])
+def create_task():
+    task = request.json
+    task['id'] = len(trading_tasks) + 1
+    task['status'] = 'active'
+    trading_tasks.append(task)
+    return jsonify({'success': True, 'task': task})
+
+@app.route('/api/tasks/<int:task_id>', methods=['PUT'])
+def update_task(task_id):
+    task = next((t for t in trading_tasks if t['id'] == task_id), None)
+    if task:
+        updates = request.json
+        task.update(updates)
+        return jsonify({'success': True, 'task': task})
+    return jsonify({'success': False, 'error': 'Task not found'}), 404
+
+@app.route('/api/tasks/<int:task_id>/status', methods=['PUT'])
+def toggle_task_status(task_id):
+    task = next((t for t in trading_tasks if t['id'] == task_id), None)
+    if task:
+        task['status'] = 'active' if task['status'] == 'inactive' else 'inactive'
+        return jsonify({'success': True, 'task': task})
+    return jsonify({'success': False, 'error': 'Task not found'}), 404
+
+@app.route('/api/wallets', methods=['GET', 'POST'])
+def handle_wallets():
+    if request.method == 'POST':
+        wallet = request.json
+        wallets.append(wallet)
+        return jsonify({'success': True})
     return jsonify({'wallets': wallets})
 
-
-@app.route('/api/wallets', methods=['POST'])
-def add_wallet():
-    wallet = request.json
-    wallets.append(wallet)
-    return jsonify({'success': True})
-
-
-@app.route('/api/wallets/<wallet_id>', methods=['DELETE'])
-def delete_wallet(wallet_id):
-    for wallet in wallets:
-        if wallet['id'] == wallet_id:
-            wallets.remove(wallet)
-            return jsonify({'success': True})
-    return jsonify({'success': False, 'error': 'Wallet not found'}), 404
-
-
-@app.route('/api/settings', methods=['GET'])
-def get_settings():
-    return jsonify(settings)
-
-
-@app.route('/api/settings', methods=['POST'])
-def update_settings():
-    new_settings = request.json
-    settings.update(new_settings)
-    return jsonify(settings)
-
-
-@app.route('/api/transactions', methods=['GET'])
-def get_transactions():
-    # Mock transaction data
-    return jsonify({
-        'transactions': [
-            {
-                'id': '1',
-                'address': '0x123...',
-                'token': 'SOL',
-                'type': 'BUY',
-                'amount': 0.1,
-                'timestamp': datetime.now().isoformat()
-            }
-        ]
-    })
-
+@app.route('/api/settings/default', methods=['GET'])
+def get_default_settings():
+    return jsonify(default_settings)
 
 if __name__ == '__main__':
     app.run(debug=False, port=30000, host='0.0.0.0')
