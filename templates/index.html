@@ -9,6 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.js"></script>
 </head>
 <body class="bg-gray-100">
+    <!-- 顶部导航栏 -->
     <nav class="bg-white shadow-lg">
         <div class="max-w-7xl mx-auto px-4">
             <div class="flex justify-between h-16">
@@ -86,122 +87,165 @@
                 </table>
             </div>
         </div>
-    </main>
 
-    <!-- 弹窗 -->
-    <!-- 任务创建弹窗 -->
-    <div id="taskModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden">
-        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <h3 class="text-lg font-medium mb-4">创建交易任务</h3>
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">任务名称</label>
-                    <input type="text" id="taskName" class="mt-1 block w-full rounded-md border-gray-300">
+        <!-- 任务创建弹窗 -->
+        <div id="taskModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full">
+            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-medium">创建交易任务</h3>
+                    <button onclick="closeTaskModal()" class="text-gray-500 hover:text-gray-700">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">监控地址组</label>
-                    <select id="addressGroup" class="mt-1 block w-full rounded-md border-gray-300">
-                        <option value="A">A组</option>
-                        <option value="B">B组</option>
-                        <option value="C">C组</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">每日跟单上限</label>
-                    <input type="number" id="maxTradesPerDay" class="mt-1 block w-full rounded-md border-gray-300" value="2">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">买入金额 (SOL)</label>
-                    <input type="number" id="buyAmount" class="mt-1 block w-full rounded-md border-gray-300" step="0.1">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">市值范围</label>
-                    <div class="flex space-x-2">
-                        <input type="number" id="marketCapMin" placeholder="最小值" class="mt-1 block w-1/2 rounded-md border-gray-300">
-                        <input type="number" id="marketCapMax" placeholder="最大值" class="mt-1 block w-1/2 rounded-md border-gray-300">
+                <div class="space-y-4">
+                    <!-- 任务基本信息 -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">任务名称</label>
+                        <input type="text" id="taskName" class="mt-1 block w-full rounded-md border-gray-300">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">监控地址组</label>
+                        <select id="addressGroup" class="mt-1 block w-full rounded-md border-gray-300">
+                            <option value="A">A组</option>
+                            <option value="B">B组</option>
+                            <option value="C">C组</option>
+                        </select>
+                    </div>
+
+                    <!-- 交易设置 -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">每日跟单上限</label>
+                        <input type="number" id="maxTradesPerDay" value="2" min="1"
+                               class="mt-1 block w-full rounded-md border-gray-300">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">买入金额 (SOL)</label>
+                        <input type="number" id="buyAmount" value="0.1" step="0.1" min="0.1"
+                               class="mt-1 block w-full rounded-md border-gray-300">
+                    </div>
+
+                    <!-- 过滤条件 -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">市值范围</label>
+                        <div class="flex space-x-2">
+                            <input type="number" id="marketCapMin" placeholder="最小值"
+                                   class="mt-1 block w-1/2 rounded-md border-gray-300">
+                            <input type="number" id="marketCapMax" placeholder="最大值"
+                                   class="mt-1 block w-1/2 rounded-md border-gray-300">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="flex items-center">
+                            <input type="checkbox" id="pumpOnly" class="rounded border-gray-300" checked>
+                            <span class="ml-2 text-sm text-gray-700">仅买入Pump代币</span>
+                        </label>
+                    </div>
+
+                    <!-- 止盈止损设置 -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">分批止盈设置</label>
+                        <div id="takeProfitLevels" class="space-y-2 mt-2"></div>
+                        <button onclick="addTakeProfitLevel()"
+                                class="mt-2 text-sm text-blue-600 hover:text-blue-800">
+                            + 添加止盈档位
+                        </button>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">止损比例 (%)</label>
+                        <input type="number" id="stopLoss" value="10" min="0" max="100"
+                               class="mt-1 block w-full rounded-md border-gray-300">
+                    </div>
+                    <div>
+                        <label class="flex items-center">
+                            <input type="checkbox" id="trailingStop" class="rounded border-gray-300">
+                            <span class="ml-2 text-sm text-gray-700">启用移动止损</span>
+                        </label>
+                    </div>
+
+                    <!-- 按钮组 -->
+                    <div class="flex justify-end space-x-3 mt-6">
+                        <button onclick="closeTaskModal()"
+                                class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">
+                            取消
+                        </button>
+                        <button onclick="createTask()"
+                                class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                            创建
+                        </button>
                     </div>
                 </div>
-                <div>
-                    <label class="flex items-center">
-                        <input type="checkbox" id="pumpOnly" class="rounded border-gray-300" checked>
-                        <span class="ml-2 text-sm text-gray-700">仅买入Pump代币</span>
-                    </label>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">分批止盈设置</label>
-                    <div id="takeProfitLevels" class="space-y-2"></div>
-                    <button onclick="addTakeProfitLevel()" class="mt-2 text-sm text-blue-600 hover:text-blue-800">
-                        + 添加止盈档位
+            </div>
+        </div>
+
+        <!-- 导入地址弹窗 -->
+        <div id="importModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden">
+            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-medium">导入监控地址</h3>
+                    <button onclick="closeImportModal()" class="text-gray-500 hover:text-gray-700">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
                     </button>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">止损比例 (%)</label>
-                    <input type="number" id="stopLoss" class="mt-1 block w-full rounded-md border-gray-300">
-                </div>
-                <div>
-                    <label class="flex items-center">
-                        <input type="checkbox" id="trailingStop" class="rounded border-gray-300">
-                        <span class="ml-2 text-sm text-gray-700">启用移动止损</span>
-                    </label>
-                </div>
-                <div class="flex justify-end space-x-3">
-                    <button onclick="closeTaskModal()" class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">
-                        取消
-                    </button>
-                    <button onclick="createTask()" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-                        创建
-                    </button>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">地址列表（每行一个）</label>
+                        <textarea id="importAddresses" rows="10"
+                                 class="mt-1 block w-full rounded-md border-gray-300"></textarea>
+                    </div>
+                    <div class="flex justify-end space-x-3">
+                        <button onclick="closeImportModal()"
+                                class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">
+                            取消
+                        </button>
+                        <button onclick="addAddresses()"
+                                class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                            导入
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- 导入地址弹窗 -->
-    <div id="importModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden">
-        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <h3 class="text-lg font-medium mb-4">导入监控地址</h3>
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">地址列表（每行一个）</label>
-                    <textarea id="importAddresses" rows="10" class="mt-1 block w-full rounded-md border-gray-300"></textarea>
+        <!-- 添加钱包弹窗 -->
+        <div id="addWalletModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden">
+            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-medium">添加交易钱包</h3>
+                    <button onclick="closeAddWalletModal()" class="text-gray-500 hover:text-gray-700">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
                 </div>
-                <div class="flex justify-end space-x-3">
-                    <button onclick="closeImportModal()" class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">
-                        取消
-                    </button>
-                    <button onclick="addAddresses()" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-                        导入
-                    </button>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">钱包名称</label>
+                        <input type="text" id="walletName" class="mt-1 block w-full rounded-md border-gray-300">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">私钥</label>
+                        <input type="password" id="privateKey" class="mt-1 block w-full rounded-md border-gray-300">
+                    </div>
+                    <div class="flex justify-end space-x-3">
+                        <button onclick="closeAddWalletModal()"
+                                class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">
+                            取消
+                        </button>
+                        <button onclick="addWallet()"
+                                class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                            添加
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
+    </main>
 
-    <!-- 添加钱包弹窗 -->
-    <div id="addWalletModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden">
-        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <h3 class="text-lg font-medium mb-4">添加交易钱包</h3>
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">钱包名称</label>
-                    <input type="text" id="walletName" class="mt-1 block w-full rounded-md border-gray-300">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">私钥</label>
-                    <input type="password" id="privateKey" class="mt-1 block w-full rounded-md border-gray-300">
-                </div>
-                <div class="flex justify-end space-x-3">
-                    <button onclick="closeAddWalletModal()" class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">
-                        取消
-                    </button>
-                    <button onclick="addWallet()" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-                        添加
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
+    <!-- 脚本引用 -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
 </body>

@@ -1,237 +1,153 @@
-// 状态管理
-let wallets = [];
-let tasks = [];
+// 全局状态管理
 let currentGroup = 'A';
+let currentTask = null;
 
-// 交易任务管理
+// 任务管理
 async function createTask() {
-    const name = document.getElementById('taskName').value;
+    const taskName = document.getElementById('taskName').value;
     const group = document.getElementById('addressGroup').value;
     const settings = {
         maxTradesPerDay: parseInt(document.getElementById('maxTradesPerDay').value),
         buyAmount: parseFloat(document.getElementById('buyAmount').value),
         pumpOnly: document.getElementById('pumpOnly').checked,
         marketCapRange: {
-            min: parseInt(document.getElementById('marketCapMin').value),
-            max: parseInt(document.getElementById('marketCapMax').value)
+            min: parseInt(document.getElementById('marketCapMin').value) || 0,
+            max: parseInt(document.getElementById('marketCapMax').value) || 1000000000
         },
         takeProfitLevels: getTakeProfitLevels(),
         stopLoss: parseFloat(document.getElementById('stopLoss').value),
         trailingStop: document.getElementById('trailingStop').checked
     };
 
+    if (!taskName) {
+        showError('请输入任务名称');
+        return;
+    }
+
     try {
         const response = await fetch('/api/tasks', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, group, settings })
+            body: JSON.stringify({ name: taskName, group, settings })
         });
+
         if (response.ok) {
             await loadTasks();
             closeTaskModal();
             showSuccess('任务创建成功');
+        } else {
+            showError('创建任务失败');
         }
     } catch (error) {
-        showError('创建任务失败');
+        showError('创建任务失败: ' + error.message);
     }
 }
 
+// 获取止盈设置
+function getTakeProfitLevels() {
+    const levels = [];
+    document.querySelectorAll('#takeProfitLevels > div').forEach(div => {
+        const percentage = parseFloat(div.querySelector('.tp-percentage').value);
+        const amount = parseFloat(div.querySelector('.tp-amount').value);
+        if (!isNaN(percentage) && !isNaN(amount)) {
+            levels.push({ percentage, sellAmount: amount });
+        }
+    });
+    return levels.sort((a, b) => a.percentage - b.percentage);
+}
+
+// 添加止盈档位
+function addTakeProfitLevel(percentage = '', amount = '') {
+    const container = document.getElementById('takeProfitLevels');
+    const levelDiv = document.createElement('div');
+    levelDiv.className = 'flex items-center space-x-2 mb-2';
+    levelDiv.innerHTML = `
+        <input type="number" value="${percentage}" placeholder="上涨比例" 
+               class="tp-percentage block w-1/3 rounded border-gray-300"
+               min="0" step="1">
+        <input type="number" value="${amount}" placeholder="卖出比例" 
+               class="tp-amount block w-1/3 rounded border-gray-300"
+               min="0" max="100" step="1">
+        <button onclick="removeTakeProfitLevel(this)" 
+                class="text-red-600 hover:text-red-800">
+            删除
+        </button>
+    `;
+    container.appendChild(levelDiv);
+}
+
+// 删除止盈档位
+function removeTakeProfitLevel(button) {
+    const levelDiv = button.parentElement;
+    if (document.querySelectorAll('#takeProfitLevels > div').length > 1) {
+        levelDiv.remove();
+    } else {
+        showWarning('至少需要保留一个止盈档位');
+    }
+}
+
+// 切换任务状态
 async function toggleTaskStatus(taskId) {
     try {
         const response = await fetch(`/api/tasks/${taskId}/status`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' }
         });
+
         if (response.ok) {
             await loadTasks();
+        } else {
+            showError('切换任务状态失败');
         }
     } catch (error) {
-        showError('切换任务状态失败');
+        showError('切换任务状态失败: ' + error.message);
     }
 }
 
-async function deleteTask(taskId) {
-    const result = await Swal.fire({
-        title: '确认删除',
-        text: '确定要删除这个任务吗？',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: '删除',
-        cancelButtonText: '取消'
-    });
-
-    if (result.isConfirmed) {
-        try {
-            const response = await fetch(`/api/tasks/${taskId}`, {
-                method: 'DELETE'
-            });
-            if (response.ok) {
-                await loadTasks();
-                showSuccess('任务已删除');
-            }
-        } catch (error) {
-            showError('删除任务失败');
-        }
-    }
-}
-
-// 地址管理
-async function addAddresses() {
-    const addresses = document.getElementById('importAddresses').value
-        .split('\n')
-        .map(addr => addr.trim())
-        .filter(addr => addr);
-
-    if (!addresses.length) {
-        showError('请输入至少一个地址');
-        return;
-    }
-
-    try {
-        const response = await fetch(`/api/addresses/${currentGroup}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ addresses })
-        });
-        if (response.ok) {
-            await loadAddresses();
-            closeImportModal();
-            showSuccess(`已成功导入 ${addresses.length} 个地址`);
-        }
-    } catch (error) {
-        showError('导入地址失败');
-    }
-}
-
-async function deleteAddress(address) {
-    const result = await Swal.fire({
-        title: '确认删除',
-        text: '确定要删除这个监控地址吗？',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: '删除',
-        cancelButtonText: '取消'
-    });
-
-    if (result.isConfirmed) {
-        try {
-            const response = await fetch(`/api/addresses/${currentGroup}/${address}`, {
-                method: 'DELETE'
-            });
-            if (response.ok) {
-                await loadAddresses();
-                showSuccess('地址已删除');
-            }
-        } catch (error) {
-            showError('删除地址失败');
-        }
-    }
-}
-
-async function changeGroup(group) {
-    currentGroup = group;
-    await loadAddresses();
-}
-
-// 钱包管理
-async function addWallet() {
-    const name = document.getElementById('walletName').value;
-    const privateKey = document.getElementById('privateKey').value;
-
-    if (!name || !privateKey) {
-        showError('请填写所有字段');
-        return;
-    }
-
-    try {
-        const response = await fetch('/api/wallets', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, privateKey })
-        });
-        if (response.ok) {
-            await loadWallets();
-            closeAddWalletModal();
-            showSuccess('钱包添加成功');
-        }
-    } catch (error) {
-        showError('添加钱包失败');
-    }
-}
-
-async function deleteWallet(publicKey) {
-    const result = await Swal.fire({
-        title: '确认删除',
-        text: '确定要删除这个钱包吗？',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: '删除',
-        cancelButtonText: '取消'
-    });
-
-    if (result.isConfirmed) {
-        try {
-            const response = await fetch(`/api/wallets/${publicKey}`, {
-                method: 'DELETE'
-            });
-            if (response.ok) {
-                await loadWallets();
-                showSuccess('钱包已删除');
-            }
-        } catch (error) {
-            showError('删除钱包失败');
-        }
-    }
-}
-
-// 数据加载函数
+// 加载任务列表
 async function loadTasks() {
     try {
         const response = await fetch('/api/tasks');
-        if (response.ok) {
-            tasks = await response.json();
-            updateTasksTable(tasks);
-        }
+        const data = await response.json();
+        updateTasksTable(data.tasks);
     } catch (error) {
         showError('加载任务列表失败');
     }
 }
 
-async function loadAddresses() {
-    try {
-        const response = await fetch(`/api/addresses/${currentGroup}`);
-        if (response.ok) {
-            const data = await response.json();
-            updateAddressList(data.addresses);
-        }
-    } catch (error) {
-        showError('加载地址列表失败');
-    }
+// 更新任务表格
+function updateTasksTable(tasks) {
+    const tbody = document.getElementById('tasksTableBody');
+    tbody.innerHTML = tasks.map(task => `
+        <tr class="hover:bg-gray-50">
+            <td class="px-6 py-4 whitespace-nowrap">${task.name}</td>
+            <td class="px-6 py-4 whitespace-nowrap">${task.group}组</td>
+            <td class="px-6 py-4 whitespace-nowrap">
+                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
+                    ${task.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">
+                    ${task.status === 'active' ? '运行中' : '已停止'}
+                </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap space-x-2">
+                <button onclick="toggleTaskStatus(${task.id})" 
+                        class="text-blue-600 hover:text-blue-900">
+                    ${task.status === 'active' ? '停止' : '启动'}
+                </button>
+                <button onclick="editTask(${task.id})"
+                        class="text-indigo-600 hover:text-indigo-900">
+                    编辑
+                </button>
+                <button onclick="deleteTask(${task.id})" 
+                        class="text-red-600 hover:text-red-900">
+                    删除
+                </button>
+            </td>
+        </tr>
+    `).join('');
 }
 
-async function loadWallets() {
-    try {
-        const response = await fetch('/api/wallets');
-        if (response.ok) {
-            const data = await response.json();
-            wallets = data.wallets;
-            updateWalletsTable(wallets);
-        }
-    } catch (error) {
-        showError('加载钱包列表失败');
-    }
-}
-
-// 工具函数
-function truncateAddress(address) {
-    return address ? `${address.slice(0, 6)}...${address.slice(-4)}` : '';
-}
-
-// 页面初始化
-document.addEventListener('DOMContentLoaded', async () => {
-    await Promise.all([
-        loadWallets(),
-        loadTasks(),
-        loadAddresses()
-    ]);
+// 页面加载完成后初始化
+document.addEventListener('DOMContentLoaded', () => {
+    loadTasks();
+    initializeTaskForm();
 });
